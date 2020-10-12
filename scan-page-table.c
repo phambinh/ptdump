@@ -8,36 +8,32 @@ typedef struct page_stats{
 }pageStats;
 
 
-void *spawnProcess(int pid, long delay){
-
-	long num=1;
-//	bool quit = false;
+void spawnProcess(int pid, long delay){
+    long num=1;
 
 	while(1){
-
 		char arg[64];
 		char proc[32];
 		sprintf(proc,"/proc/%d",pid);
-		if( access(proc,F_OK)==-1)
+		if( access(proc,F_OK)==-1) {
+            printf("***** Application Finished. Stopped PT Scan Thread *****\n");
 			break;
-		sprintf(arg,"pagetypes -p %d > pagestat%ld.%d",pid,num,pid);
+        }
+		sprintf(arg,"./page-types -p %d > pagestat%ld.%d",pid,num,pid);
 		system(arg); 
 		num++;
 		sleep(delay);
 	}
-
 }
 
 int main( int argc, char *argv[] ){
-	
-	//usage : dataCollect <pid> <Delay>
 	if( argc != 3 ){
-		printf( " Usage: dataCollect <pid> <delay> \n");
+		printf( " Usage: scan-page-table <pid> <delay> \n");
 	}
 	
-
  	int pid = atoi(argv[1]);
 	long delay = atoi(argv[2]);
-	printf("Spawn the process\n");
+	printf("***** Started PT Scan Thread *****\n");
 	spawnProcess(pid,delay);
+    return 0;
 }
