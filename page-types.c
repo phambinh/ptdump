@@ -5,6 +5,7 @@
  * Copyright (C) 2009 Intel corporation
  *
  * Authors: Wu Fengguang <fengguang.wu@intel.com>
+ * Modified by Binh Pham <binh.q.pham@intel.com>
  */
 
 #define _FILE_OFFSET_BITS 64
