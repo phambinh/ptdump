@@ -41,6 +41,7 @@
 # define STR(x) _STR(x)
 #endif
 
+#define PAGE_SHIFT 12  // user defined, work around. 
 /*
  * pagemap kernel ABI bits
  */
@@ -171,6 +172,11 @@ static unsigned long	opt_size[MAX_ADDR_RANGES];
 static int		nr_vmas;
 static unsigned long	pg_start[MAX_VMAS];
 static unsigned long	pg_end[MAX_VMAS];
+typedef struct {
+    char perm[4];  //read, write, execute, and shared. 
+} vma_permission_t; 
+
+static vma_permission_t pg_permission[MAX_VMAS];
 
 #define MAX_BIT_FILTERS	64
 static int		nr_bit_filters;
@@ -922,6 +928,10 @@ static void parse_pid(const char *str)
 		}
 		pg_start[nr_vmas] = vm_start / page_size;
 		pg_end[nr_vmas] = vm_end / page_size;
+        pg_permission[nr_vmas].perm[0] = r;
+        pg_permission[nr_vmas].perm[1] = w;
+        pg_permission[nr_vmas].perm[2] = x;
+        pg_permission[nr_vmas].perm[3] = s;
 		if (++nr_vmas >= MAX_VMAS) {
 			fprintf(stderr, "too many VMAs\n");
 			break;
@@ -934,8 +944,12 @@ void page_table_dump()
 {
 	int i, j;
 	unsigned long words;
-
-	printf("VPN-PPNMap:\n");
+    kpageflags_fd = open("/proc/kpageflags", O_RDONLY);
+    if (kpageflags_fd < 0) {
+        perror("Error opening /proc/kpageflags");
+        exit(EXIT_FAILURE);
+    }
+    printf("vpn:ppn:perm:present:swapped:shared:huge:thp\n");
 	for (i=0; i<nr_vmas; i++)
 	{
 		int num_pages = pg_end[i] - pg_start[i];
@@ -943,20 +957,40 @@ void page_table_dump()
 		words = pagemap_read(mappings, pg_start[i], num_pages);
 		printf("Range %i: read %lu pages...\n", i, words);
 		unsigned long start_page = pg_start[i] * page_size;
+        char r, w, x, s;
+        r = pg_permission[i].perm[0]; // all pages in the same vma region share the same permission bits.
+        w = pg_permission[i].perm[1];
+        x = pg_permission[i].perm[2];
+        s = pg_permission[i].perm[3];
 
 		for (j=0; j<num_pages; j++)
 		{
-			uint64_t pfn = pagemap_pfn(mappings[j]);
-			uint64_t vpn = start_page >> 12;
-			if (pfn == 0)  // not present page
-				continue;
+			// uint64_t pfn = pagemap_pfn(mappings[j]);
+			uint64_t vpn = start_page >> PAGE_SHIFT;
+            uint64_t flags = 0;
+            uint64_t val;
+           
+            if (pread(pagemap_fd, &val, sizeof(val), vpn * 8) == -1) {
+                perror("PREAD pagemap failed");
+                exit(-1);
+            }
 
-			printf("0x%lx:0x%lx\n",vpn,pfn);
+            uint64_t pfn = PM_PFRAME(val);
+            int present = (val & (1ULL << 63)) != 0;
+            int swapped = (val & (1ULL << 62)) != 0;
+            int shared =  (val & (1ULL << 61)) != 0;
+            if (!kpageflags_read(&flags, pfn, 1)) {
+                printf("PREAD kpageflags failed\n");
+                exit(EXIT_FAILURE);
+            }
+
+            int huge = ((flags & (1ULL << 17)) != 0);
+            int thp = ((flags & (1ULL << 22)) != 0);
+			printf("0x%lx:0x%lx:%c%c%c%c:%d:%d:%d:%d:%d\n", 
+                    vpn, pfn, r, w, x, s, present, swapped, shared, huge, thp);
 			start_page += page_size;
 		}
 	}
-	
-	printf("VPN-PPNMap-End\n");
 }
 
 static void show_file(const char *name, const struct stat *st)
