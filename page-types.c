@@ -28,9 +28,7 @@
 #include <sys/mount.h>
 #include <sys/statfs.h>
 #include <sys/mman.h>
-#include "magic.h"
 #include "kernel-page-flags.h"
-#include <api/fs/fs.h>
 
 #ifndef MAX_PATH
 # define MAX_PATH 256
@@ -194,7 +192,7 @@ static int		page_idle_fd = -1;
 static int		opt_hwpoison;
 static int		opt_unpoison;
 
-static const char	*hwpoison_debug_fs;
+// static const char	*hwpoison_debug_fs;
 static int		hwpoison_inject_fd;
 static int		hwpoison_forget_fd;
 
@@ -527,7 +525,7 @@ static uint64_t kpageflags_flags(uint64_t flags, uint64_t pme)
 /*
  * page actions
  */
-
+#if 0
 static void prepare_hwpoison_fd(void)
 {
 	char buf[MAX_PATH + 1];
@@ -550,7 +548,7 @@ static void prepare_hwpoison_fd(void)
 		hwpoison_forget_fd = checked_open(buf, O_WRONLY);
 	}
 }
-
+#endif
 static int hwpoison_page(unsigned long offset)
 {
 	char buf[100];
@@ -1364,6 +1362,7 @@ int main(int argc, char *argv[])
 		case 'N':
 			opt_no_summary = 1;
 			break;
+#if 0
 		case 'X':
 			opt_hwpoison = 1;
 			prepare_hwpoison_fd();
@@ -1372,6 +1371,7 @@ int main(int argc, char *argv[])
 			opt_unpoison = 1;
 			prepare_hwpoison_fd();
 			break;
+#endif
 		case 'F':
 			parse_kpageflags(optarg);
 			break;

@@ -1,21 +1,12 @@
 CC=gcc
 TARGETS=scan-page-table page-types
-LIB_DIR= ./lib/api
-LIBS = $(LIB_DIR)/libapi.a
 
-CFLAGS = -Wall -Wextra -I./lib/
-LDFLAGS = $(LIBS)
-
+CFLAGS = -Wall -Wextra
+LDFLAGS = 
 all: $(TARGETS)
-
-$(TARGETS): $(LIBS)
-
-$(LIBS):
-	make -C $(LIB_DIR)
 
 %: %.c
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
-	rm scanPT page-types
-	make -C $(LIB_DIR) clean
+	rm scan-page-table page-types
